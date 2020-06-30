@@ -11,6 +11,7 @@
     "test": "tests"
   },
   "scripts": {
+    "postinstall": "cd electron-app && yarn install",
     "build": "ember build --environment=production",
     "lint:hbs": "ember-template-lint .",
     "lint:js": "eslint .",

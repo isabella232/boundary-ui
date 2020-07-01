@@ -1,30 +1,57 @@
 /* eslint-disable no-console */
 const { default: installExtension, EMBER_INSPECTOR } = require('electron-devtools-installer');
 const { pathToFileURL } = require('url');
-const { app, BrowserWindow } = require('electron');
+const { app, protocol, BrowserWindow } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
-const handleFileUrls = require('./handle-file-urls');
+const protocolServe = require('electron-protocol-serve');
 
+// Ember app configuration
 const emberAppDir = path.resolve(__dirname, '..', 'ember-dist');
-const emberAppURL = pathToFileURL(path.join(emberAppDir, 'index.html')).toString();
+const emberAppProtocol = 'serve';
+const emberAppLocation = `${emberAppProtocol}://dist`;
 
 let mainWindow = null;
-
-// Uncomment the lines below to enable Electron's crash reporter
-// For more information, see http://electron.atom.io/docs/api/crash-reporter/
-// electron.crashReporter.start({
-//     productName: 'YourName',
-//     companyName: 'YourCompany',
-//     submitURL: 'https://your-domain.com/url-to-submit',
-//     autoSubmit: true
-// });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
+
+app.on('web-contents-created', (event, contents) => {
+  contents.on('will-attach-webview', (event, webPreferences, params) => {
+    // Remove preload scripts
+    delete webPreferences.preload
+    delete webPreferences.preloadURL
+
+    // Verify webcontents source
+    if (!params.src.startsWith(emberAppLocation)) event.preventDefault();
+  });
+
+  // Disable unapproved window creation
+  contents.on('new-window', async (event, navigationUrl) => {
+    event.preventDefault()
+    await shell.openExternal(navigationUrl)
+  });
+
+  // By default, webContents may show only the app and no other locations.
+  contents.on('will-navigate', (event, url) => {
+    if (!url.startsWith(emberAppLocation)) event.preventDefault();
+  });
+})
+
+/* Register a `serve` protocol to surface ember app distribution folder
+   Must be defined before `ready` event.
+*/
+protocolServe({ cwd: emberAppDir, app, protocol });
+protocol.registerSchemesAsPrivileged([{
+  scheme: emberAppProtocol,
+  privileges: {
+    secure: true,
+    standard: true
+  }
+}]);
 
 app.on('ready', async () => {
   if (isDev) {
@@ -40,23 +67,26 @@ app.on('ready', async () => {
     }
   }
 
-  await handleFileUrls(emberAppDir);
-
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
+    preload: path.join(app.getAppPath(), 'preload.js'),
+    webPreferences: {
+      sandbox: true,
+      webSecurity: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      enableRemoteModule: false,
+      allowRunningInsecureContent: false
+    }
   });
 
-  // If you want to open up dev tools programmatically, call
-  // mainWindow.openDevTools();
-
-  // Load the ember application
-  mainWindow.loadURL(emberAppURL);
+  mainWindow.loadURL(emberAppLocation);
 
   // If a loading operation goes wrong, we'll send Electron back to
   // Ember App entry point
   mainWindow.webContents.on('did-fail-load', () => {
-    mainWindow.loadURL(emberAppURL);
+    mainWindow.loadURL(emberAppLocation);
   });
 
   mainWindow.webContents.on('crashed', () => {

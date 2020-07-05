@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 const { default: installExtension, EMBER_INSPECTOR } = require('electron-devtools-installer');
 const { pathToFileURL } = require('url');
-const { app, protocol, BrowserWindow } = require('electron');
+const { app, protocol, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
 const protocolServe = require('electron-protocol-serve');
@@ -10,6 +10,7 @@ const protocolServe = require('electron-protocol-serve');
 const emberAppDir = path.resolve(__dirname, '..', 'ember-dist');
 const emberAppProtocol = 'serve';
 const emberAppLocation = `${emberAppProtocol}://dist`;
+const preloadPath = path.resolve(__dirname, 'preload.js');
 
 let mainWindow = null;
 
@@ -41,6 +42,13 @@ app.on('web-contents-created', (event, contents) => {
   });
 })
 
+/*
+ * Capture events from renderer.
+ * To reply to renderer process using same identifier as incoming message, use:
+ *  event.reply('message', {id, type, data: {'asdf': 'successful'}});
+ */
+ipcMain.on('message', (event, {id, target, type, data}) => {});
+
 /* Register a `serve` protocol to surface ember app distribution folder
    Must be defined before `ready` event.
 */
@@ -70,14 +78,14 @@ app.on('ready', async () => {
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
-    preload: path.join(app.getAppPath(), 'preload.js'),
     webPreferences: {
       sandbox: true,
       webSecurity: true,
       contextIsolation: true,
       nodeIntegration: false,
       enableRemoteModule: false,
-      allowRunningInsecureContent: false
+      allowRunningInsecureContent: false,
+      preload: preloadPath
     }
   });
 

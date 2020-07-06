@@ -5,6 +5,7 @@ const { app, protocol, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
 const protocolServe = require('electron-protocol-serve');
+const Credentials = require('./credentials');
 
 // Ember app configuration
 const emberAppDir = path.resolve(__dirname, '..', 'ember-dist');
@@ -13,6 +14,7 @@ const emberAppLocation = `${emberAppProtocol}://dist`;
 const preloadPath = path.resolve(__dirname, 'preload.js');
 
 let mainWindow = null;
+let credentials = null;
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -42,12 +44,36 @@ app.on('web-contents-created', (event, contents) => {
   });
 })
 
+const handleCredentialEvent = (event, {id, name, message}) => {
+  switch (name.toLowerCase()) {
+    case 'create':
+      credentials = new Credentials('watchtower-service');
+      let result = credentials.create(message.account, message.password);
+      result.then(() => {
+        event.reply('message', { id, data: { success: true} });
+      }).catch(() => {
+        event.reply('message', { id, data: { success: false } });
+      })
+      break;
+    default:
+      event.reply('message', { id, data: { success: true, processed: false } });
+  }
+}
+
 /*
  * Capture events from renderer.
  * To reply to renderer process using same identifier as incoming message, use:
- *  event.reply('message', {id, type, data: {'asdf': 'successful'}});
+ *  event.reply('message', {id, type, data: {'can-be': 'anything'}});
  */
-ipcMain.on('message', (event, {id, target, type, data}) => {});
+ipcMain.on('message', (event, {id, target, type, name, message}) => {
+  switch (type.toLowerCase()) {
+    case 'credential':
+      handleCredentialEvent(event, {id, name, message});
+      break;
+    default:
+      event.reply('message', { id, data: { success: true, processed: false } });
+  }
+});
 
 /* Register a `serve` protocol to surface ember app distribution folder
    Must be defined before `ready` event.

@@ -10,8 +10,8 @@ const messageEvent = 'message';
  *  The IPC Service provides a secure way of communicating between
  *  this ember app and electron's main process.
  *  Usage:
- *    @service client-ipc;
- *    this.client-ipc.sendMessage('type', 'name', messsageObject).then(response => console.log('received response', response));
+ *    @service clientIpc;
+ *    this.clientIpc.sendMessage('type', 'name', messsageObject).then(response => console.log('received response', response));
  */
 export default class ClientIpcService extends Service {
   constructor() {
@@ -24,6 +24,7 @@ export default class ClientIpcService extends Service {
     const message = {
       id: v1(),
       target: 'main',
+      type,
       name,
       data
     };

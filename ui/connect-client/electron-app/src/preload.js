@@ -33,7 +33,6 @@ process.once('loaded', () => {
   // Send event to main process
   const sendToMain = ({id, target, type, name, data: message}) => {
     message = parseJson(message);
-
     const messageData = {
       id: String(id),
       target: String(target),

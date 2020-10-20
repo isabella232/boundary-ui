@@ -1,13 +1,24 @@
 /* eslint-disable no-console */
 const { default: installExtension, EMBER_INSPECTOR } = require('electron-devtools-installer');
-const { pathToFileURL } = require('url');
-const { app, BrowserWindow } = require('electron');
+const { app, protocol, BrowserWindow } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
-const handleFileUrls = require('./handle-file-urls');
+const protocolServe = require('electron-protocol-serve');
 
+/**
+ * Define and register a `serve` protocol to surface ember distribution folder
+ */
 const emberAppDir = path.resolve(__dirname, '..', 'ember-dist');
-const emberAppURL = pathToFileURL(path.join(emberAppDir, 'index.html')).toString();
+const rendererProtocol = 'serve';
+const rendererLocation = `${rendererProtocol}://dist/index.html`;
+
+protocolServe({cwd: emberAppDir, app, protocol});
+protocol.registerSchemesAsPrivileged([{
+  scheme: rendererProtocol,
+  privileges: {
+    secure: true
+  }
+}]);
 
 let mainWindow = null;
 
@@ -33,23 +44,29 @@ app.on('ready', async () => {
     .catch((err) => console.error('Failed to install Ember Inspector: ', err));
   }
 
-  await handleFileUrls(emberAppDir);
-
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
+    webPreferences: {
+      sandbox: true,
+      webSecurity: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      enableRemoteModule: false,
+      allowRunningInsecureContent: false,
+    }
   });
 
   // If you want to open up dev tools programmatically, call
   // mainWindow.openDevTools();
 
   // Load the ember application
-  mainWindow.loadURL(emberAppURL);
+  mainWindow.loadURL(rendererLocation);
 
   // If a loading operation goes wrong, we'll send Electron back to
   // Ember App entry point
   mainWindow.webContents.on('did-fail-load', () => {
-    mainWindow.loadURL(emberAppURL);
+    mainWindow.loadURL(rendererLocation);
   });
 
   mainWindow.webContents.on('crashed', () => {

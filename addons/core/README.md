@@ -73,7 +73,7 @@ export default class ExampleRoute extends Route {
 }
 ```
 
-In the application template, interate over confirmations, yielding the
+In the application template, iterate over confirmations, yielding the
 confirmation instance as well as accept and deny functions which, when called,
 update the confirmation status.
 
@@ -101,6 +101,23 @@ Ember config (see admin).  Then reference doc links by keys:
 ## Loading Helper
 
 To make use of the `is-loading` helper, install `ember-loading` first.
+
+## Scope Service
+
+This addon exposes a service to hold all active scopes (org and project where available).
+
+To make use of the service, import it and initialize it using service injection. 
+
+```js
+import { inject as service } from '@ember/service';
+
+export default class ExampleRoute extends Route {
+  @service scope;
+  async myAction() {
+    // do something
+  }
+}
+```
 
 ## Yarn Commands
 

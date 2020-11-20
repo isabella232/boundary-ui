@@ -36,6 +36,10 @@ module.exports = function (environment) {
     appName: APP_NAME,
 
     notifyTimeout: 4000,
+
+    'ember-cli-mirage': {
+      directory: '../../addons/api/mirage'
+    }
   };
 
   if (environment === 'development') {
